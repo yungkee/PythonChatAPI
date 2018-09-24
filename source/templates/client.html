@@ -1,27 +1,63 @@
-<html>
-	<head>
-		<title>ChatRoom</title>
-		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.8/socket.io.min.js"></script>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
-	</head>
-	<body>
-		<script type="text/javascript">
-			$(document).ready(function(){
-				var socket = io.connect('http://127.0.0.1:5000');
-				socket.on('connect', function(){
-                   socket.send('Client connected.');
-				});
-                $('#send').on('click', function(){
-                    socket.send($('#user_message').val());
-                    $('#user_message').val('');
-                });
-                socket.on('message', function(msg){
-                  $('#messages').append('<li>'+msg+'</li>');
-                });
-			});
-		</script>
-		<ul id="messages"></ul>
-		<input type="text" id="user_message">
-		<button id="send">Forward</button>
-	</body>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>test chat</title>
+
+  </head>
+  <body>
+      In process creation.....
+      <br />
+      Username {{ username }}
+      <br />
+      <form action="/logout" method="POST">
+          <input id="logoutbutton" type="submit" value="LogOut"/>
+      </form>
+    <div class="container">
+        <div class="no_message">
+          <h1 style='color: #ccc'>No message yet..</h1>
+          <div class="message_holder"></div>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <form name="send" action="" method="POST">
+          <input type="text" class="message form-control" placeholder="Messages">
+          <button type="submit" class="btn btn-success btn-block"><span class="glyphicon glyphicon-send"></span> Send</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
+    <script>
+      var socket = io.connect( 'http://' + document.domain + ':' + location.port )
+      // broadcast a message
+      socket.on( 'connect', function() {
+        socket.emit( 'message event', {
+          data: 'User Connected'
+        } )
+        var form = $( 'form[name="send"]' ).on( 'submit', function( e ) {
+          e.preventDefault()
+          let user_name = '{{ user }}'
+          let user_input = $( 'input.message' ).val()
+          socket.emit( 'message event', {
+            user_name : user_name,
+            message : user_input
+          } )
+          // empty the input field
+          $( 'input.message' ).val( '' ).focus()
+        } )
+      } )
+      // capture message
+      socket.on( 'message_response', function( msg ) {
+        console.log( msg )
+        if( typeof msg.user_name !== 'undefined' ) {
+          $( 'h1' ).remove()
+          $( 'div.message_holder' ).append( '<div class="msg_bbl"><b style="color: #000">'+msg.user_name+'</b> '+msg.message+'</div>' )
+        }
+      } )
+    </script>
+  </body>
 </html>

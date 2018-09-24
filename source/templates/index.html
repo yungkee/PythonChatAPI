@@ -1,0 +1,51 @@
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <title>Simple Chat!</title>
+</head>
+
+<body>
+    <br />
+    {% with flash_messages = get_flashed_messages() %}
+        {% if flash_messages %}
+            <div class=flashes>
+                {% for message in flash_messages %}
+                {{ message }}
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    <br />
+    <div id='labelIn' style='display: none;'>
+        <form action="/forwarding" method="POST">
+            <input name="start" id='startbutton' type="submit" value="Start Chatting"/>
+        </form>
+        <form action="/logout" method="POST">
+            <input name="logout" id='logoutbutton' type="submit" value="Logout"/>
+        </form>
+    </div>
+    <br />
+    <div id='labelNotIn' style='display: none;'>
+        <form action="/register" method="GET">
+            <input name="register" id='signupbutton' type="submit" value="Register Account"/>
+        </form>
+        <form action="/login" method="GET">
+            <input id='signinpbutton' type="submit" value="Login in"/>
+        </form>
+    </div>
+    <br />
+</body>
+
+<script>
+let login = '{{ login }}';
+if (login === 'True') {
+    document.getElementById("labelIn").style.display='inline-block';
+    document.getElementById("labelNotIn").style.display='none';
+}
+if (login === 'False') {
+    document.getElementById("labelIn").style.display='none';
+    document.getElementById("labelNotIn").style.display='inline-block';
+}
+
+</script>
+</html>

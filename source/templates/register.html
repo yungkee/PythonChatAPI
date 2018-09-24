@@ -1,0 +1,34 @@
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <title>Register!</title>
+  <link rel="stylesheet" type="text/css" href="css/signup.css">
+</head>
+
+<body>
+    <form method="POST">
+        <table>
+            <tr>
+              <td>Nickname</td>
+              <td>
+                <input name="nick" type="text">
+              </td>
+            </tr>
+            <tr>
+              <td>Password</td>
+              <td>
+                <input name="password" type="password">
+              </td>
+            </tr>
+            <tr>
+              <td>Repeat password</td>
+              <td>
+                <input name="password2" type="password">
+              </td>
+            </tr>
+          </table>
+
+          <input type="button" onclick="validate(this.form)" value="Check">
+    </form>
+</body>
+</html>

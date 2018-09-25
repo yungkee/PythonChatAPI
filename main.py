@@ -22,6 +22,7 @@ def register():
 
 @app.route('/login', methods=['GET', 'POST']) #authorization
 def login():
+    form = 
     if 'user' in session:
         return redirect(url_for('mainpage'))
     else:
@@ -39,20 +40,45 @@ def logout():
 	session.pop('user', None)
 	return redirect(url_for('mainpage'))
 
-@app.route('/chat/<user>')
-def chat(user):
-	if 'user' in session:
-		return render_template('client.html', user = escape(session['user']))
-	else:
-		return redirect(url_for('login'))
+@app.route('/chat', methods = ['GET','POST'])
+def chat():
+    form = MainForm()
+    topics = Topic.query.all()
 
-def messageRecived():
-  print( 'message was received!!!' )
+    if 'email' not in session:
+        return redirect(url_for('login'))
 
-@socketio.on( 'message event' )
-def handle_my_custom_event( json ):
-  print( 'recived my event: ' + str( json ) )
-  socketio.emit( 'message_response', json, callback=messageRecived )
+    user = User.query.filter_by(email = session['email']).first()
+
+    if user is None:
+        return redirect(url_for('login'))
+    else:
+        if reguest.method == 'POST':
+            if form.validate() == False:
+                return render_template('client.html', form = form, topics = topics)
+            else:
+                uid = user.uid 
+                newtopic = Topic(form.topicname.data, uid)
+                db.session.add(newtopic)
+                db.session.commit()
+                session['topic'] = newtopic.topicname
+                return redirec(url_for('chat'))
+
+        if request.method == 'GET':
+            return render_template('client.html', form = form, topics = topics)
+
+
+@socketio.on('message', namespace='/chat')
+def chat_message(message):
+    print("message = ", message)
+    print(message['data']['message'])
+    email = session.get('email')
+    room = session.get('room')
+    emit('message',{'msg': session.get('email') + ':' + message['data']['message']}, room = room)
+    user = User.query.filter_by(email = email).first()
+    message = Message(message['data']['message'], uid. room.uid)
+    db.session.add(message)
+    db.session.commit()
 
 if __name__ == '__main__':
 	socketio.run(app, debug=True, host='localhost', port=5000)

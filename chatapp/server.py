@@ -1,32 +1,54 @@
 from flask import Flask, request, session, escape, flash, render_template, url_for, flash, redirect
 from chatapp import app
+from validation import RegisterForm, LoginForm, RoomForm
+from models import db, User, Room, Message
 
 @app.route('/')
 def index():
     return render_template('index.hmtl')
 
 
-
-@app.route('/register', methods=['GET', 'POST']) #regestration
+@app.route('/register', methods=['GET', 'POST']) 
 def register():
+    form = RegisterForm()
+
+    session['room'] = 'General'
+
+    if 'email' in session:
+        return redirect(url_for('chat'))
+
+    if request.method == 'POST':
+        if form.validate() == False:
+            return render_template('register.html', form=form)
+        else:
+            new_user = User(form.username.data, form.email.data, form.password.data)
+            db.session.add(new_user)
+            db.session.commit()
+            session['email'] = new_user.email
+            return redirect(url_for('chat'))
+
     if request.method == 'GET':
-        return render_template('register.html')
-    else:
-        return 'error'
+        return render_template('register.html', form = form)
 
 @app.route('/login', methods=['GET', 'POST']) #authorization
 def login():
-    if 'user' in session:
-        return redirect(url_for('mainpage'))
-    else:
-        if request.method == 'GET':
-            return render_template('login.html')
+    form = LoginForm()
 
-        elif request.method == 'POST':
-            username = request.form['username']
-            password = request.form['password']
-            session['user'] = username
-            return redirect(url_for('chat', user=escape(session['user'])))
+    session['room'] = 'General'
+
+    if 'email' in session:
+        return redirect(url_for('chat'))
+
+    if request.method == 'POST':
+        if form.validate() == False:
+            return render_template('login.html', form = form)
+        else:
+            session['email'] = form.email.data
+            return redirect(url_for('chat'))
+
+    elif request.method == 'GET':
+        return render_template('login.html', form = form)
+
 
 @app.route('/logout', methods =['POST'])
 def logout():
@@ -35,8 +57,8 @@ def logout():
 
 @app.route('/chat', methods = ['GET','POST'])
 def chat():
-    form = MainForm()
-    topics = Topic.query.all()
+    form = RoomForm()
+    session['room'] = 'General'
 
     if 'email' not in session:
         return redirect(url_for('login'))
@@ -46,19 +68,10 @@ def chat():
     if user is None:
         return redirect(url_for('login'))
     else:
-        if reguest.method == 'POST':
-            if form.validate() == False:
-                return render_template('client.html', form = form, topics = topics)
-            else:
-                uid = user.uid 
-                newtopic = Topic(form.topicname.data, uid)
-                db.session.add(newtopic)
-                db.session.commit()
-                session['topic'] = newtopic.topicname
-                return redirec(url_for('chat'))
+        pass
 
         if request.method == 'GET':
-            return render_template('client.html', form = form, topics = topics)
+            return render_template('chat.html', form = form, topics = topics)
 
 
 @socketio.on('message', namespace='/chat')

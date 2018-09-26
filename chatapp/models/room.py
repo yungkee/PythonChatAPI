@@ -1,4 +1,4 @@
-from . import db
+from chatapp import db
 
 class Room(db.Model):
     __tablename__ = 'rooms'

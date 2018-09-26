@@ -12,9 +12,9 @@ class RoomForm(Form):
 	def validate(self):
 		if not Form.validate(self):
 			return False
-		topic = RoomName.query.filter_by(topicname = self.roomname.data.lower()).first()
+		topic = RoomName.query.filter_by(roomname = self.roomname.data.lower()).first()
 		if topic:
-			self.roomname.errors.append("That topic name is already exist")
+			self.roomname.errors.append("That room name is already exist")
 			return False
 		else:
 			return True
@@ -29,11 +29,8 @@ class RegisterForm(Form):
   	def __init__(self,*args, **kwargs):
   		Form.__init__(self, *args,**kwargs)
 
-  	
-
-
+  
 class LoginForm(Form):
-
 	def __init__(self, *args, **kwargs):
 		Form.__init__(self,*args,**kwargs)
 

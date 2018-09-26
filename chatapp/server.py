@@ -3,6 +3,8 @@ from chatapp import app
 from validation import RegisterForm, LoginForm, RoomForm
 from models import db, User, Room, Message
 
+from flask_socketio import SocketIO, emit, join_room, leave_room
+
 @app.route('/')
 def index():
     return render_template('index.hmtl')
@@ -73,15 +75,39 @@ def chat():
         if request.method == 'GET':
             return render_template('chat.html', form = form, topics = topics)
 
+#TODO
+@socketio.on('new_room', namespace='/chat')
+def new_room(message):
+    pass
+
+#TODO
+@socketio.on('join_to_room', namespace='/chat')
+def join_to_room(message):
+    room = message['data']['room']
+    session['room'] = room
+    join_room(room)
+    emit('status', {'msg': session.get('email') + 'has entered' + room + '.'}, room = room)
+
 
 @socketio.on('message', namespace='/chat')
 def chat_message(message):
     print("message = ", message)
     print(message['data']['message'])
+
+
     email = session.get('email')
     room = session.get('room')
     emit('message',{'msg': session.get('email') + ':' + message['data']['message']}, room = room)
-    user = User.query.filter_by(email = email).first()
-    message = Message(message['data']['message'], uid. room.uid)
-    db.session.add(message)
-    db.session.commit()
+    # user = User.query.filter_by(email = email).first()
+    # message = Message(message['data']['message'], uid. room.uid)
+    # db.session.add(message)
+    # db.session.commit()
+
+#Not implemented yet
+@socketio.on('left', namespace='/chat')
+def left(message):
+    room = session.get('room')
+    leave_room(room)
+    emit('status',{'msg': session.get('email')+ 'has left' + room +'.'}, room = room)
+    session.pop('room', None)
+

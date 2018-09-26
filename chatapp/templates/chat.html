@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+
+{% block content %}
+  <div class="container">
+      <div class="col-md-12">
+        <div class="panel panel-info">
+          <div class="panel-heading">
+            <strong><span class="glyphicon glyphicon-list"></span> Chat History</strong>
+          </div>
+          <div class="panel-body fixed-panel">
+            <ul class="media-list" id="chat">
+            </ul>
+          </div>
+          <div class="panel-footer">
+            <div class="input-group">
+              <input type="text" class="form-control" placeholder="Enter Message" id="messageText" autofocus/>
+              <span class="input-group-btn">
+                <button class="btn btn-info" type="button" id="sendMessage">SEND <span class="glyphicon glyphicon-send"></span></button>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<script>
+  $(document).ready(function() {
+    var channel = "/chat";
+    var socket = io.connect('http://' + document.domain + ':' + location.port + channel);
+    var receivedMsg;
+
+    socket.on('connect', function () {
+      socket.emit('joined', {});
+    });
+
+    socket.on('status', function(data) {
+      console.log(data);
+      $('#chat').append('<li>' + data.msg + '\n');
+    });
+    
+    socket.on('message', function(data) {
+      receivedMsg = data;
+      console.log(receivedMsg);
+      console.log(receivedMsg.msg);
+      $('#chat').append('<li>' + data.msg + '\n');
+    });
+    
+    $('#messageText').keypress(function(e) {
+      var code = e.keyCode || e.which;
+      if (code == 13) {
+        text = $('#messageText').val();
+        sendMessage();
+        $('#messageText').val('');
+      }
+    });
+
+    $("#sendMessage").on("click", function () {
+        sendMessage();
+    });
+
+    function sendMessage() {
+        $container = $('.media-list');
+        $container[0].scrollTop = $container[0].scrollHeight;
+        var text = $("#messageText").val();
+        socket.emit('message', { data: { message: text} });
+        $("#messageText").val("");
+      }
+  });
+  
+    /*function refreshMessages(message) {
+      $(".media-list").append('<li class="media"><div class="media-body"><div class="media"><div class="media-body">'
+        + message.data.message + '<br/><small class="text-muted">' + message.data.author + '</small><hr/></div></div></div></li>');
+    }*/
+  </script>
+
+{% endblock %}

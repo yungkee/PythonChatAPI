@@ -4,14 +4,10 @@
 <div class="container">
   <h2>Register</h2>
 
-  {% for message in form.firstname.errors %}
+  {% for message in form.username.errors %}
     <div class="flash">{{ message }}</div>
   {% endfor %}
-  
-  {% for message in form.lastname.errors %}
-    <div class="flash">{{ message }}</div>
-  {% endfor %}
-  
+    
   {% for message in form.email.errors %}
     <div class="flash">{{ message }}</div>
   {% endfor %}
@@ -23,11 +19,8 @@
   <form action="{{ url_for('register') }}" method=post>
     {{ form.hidden_tag() }}
     
-    {{ form.firstname.label }}
-    {{ form.firstname }}
-    
-    {{ form.lastname.label }}
-    {{ form.lastname }}
+    {{ form.username.label }}
+    {{ form.username }}
     
     {{ form.email.label }}
     {{ form.email }}

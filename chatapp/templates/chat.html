@@ -2,35 +2,81 @@
 
 {% block content %}
   <div class="container">
+    <div class="row">
       <div class="col-md-12">
-        <div class="panel panel-info">
-          <div class="panel-heading">
-            <strong><span class="glyphicon glyphicon-list"></span> Chat History</strong>
-          </div>
-          <div class="panel-body fixed-panel">
-            <ul class="media-list" id="chat">
+        <div class="col-md-3">
+          <div class="panel panel-info">
+            <div class="panel-heading">
+              <strong>Available Chatrooms</strong>
+            </div>
+            <ul id="chat-rooms">
+              {% for room in rooms %}
+                {% if room.roomname %}
+                  <li class="room"><a href="#{{ room.roomname }}">{{ room.roomname }}</a></li>
+                {% endif %}
+              {% endfor %}
             </ul>
           </div>
-          <div class="panel-footer">
-            <div class="input-group">
-              <input type="text" class="form-control" placeholder="Enter Message" id="messageText" autofocus/>
-              <span class="input-group-btn">
-                <button class="btn btn-info" type="button" id="sendMessage">SEND <span class="glyphicon glyphicon-send"></span></button>
-              </span>
+          <div class="panel panel-info">
+            <div class="panel-heading">
+              <strong>Create room</strong>
+            </div>
+            <div class="container-fluid">
+              {% for message in form.roomname.errors %}
+              <div class="flash">{{ message }}</div>
+class Message(db.Model):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    message = db.Column(db.UnicodeText)
+    created_at = db.Column(db.DateTime)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'))
+              {% endfor %}
+      
+              <form id="submit-room" action="{{ url_for('chat') }}" method="post">
+                {{ form.hidden_tag() }}
+                
+                {{ form.roomname.label }}
+                {{ form.roomname }}
+                
+                {{ form.submit }}
+              </form>
             </div>
           </div>
         </div>
+        <div class="col-md-9">
+          <div class="panel panel-info">
+            <div class="panel-heading">
+              <strong><span class="glyphicon glyphicon-align-justify"></span> Current chat: <span id="chatroom-name">MainRoom</strong>
+            </div>
+            <div class="panel-body fixed-panel">
+              <ul class="media-list" id="chat">
+              </ul>
+            </div>
+            <div class="panel-footer">
+              <div class="input-group">
+                <input type="text" class="form-control" placeholder="Enter Message" id="messageText" autofocus/>
+                <span class="input-group-btn">
+                  <button class="btn btn-success" type="button" id="sendMessage">SEND <span class="glyphicon glyphicon-circle-arrow-right"></span></button>
+                </span>
+              </div>
+            </div>
+        </div>
+      </div>
       </div>
     </div>
   </div>
+</div>
 <script>
   $(document).ready(function() {
+    $('#submit').addClass('btn').addClass('btn-primary').css('margin-top', '1em');
+    $('#roomname').addClass('form-control');
     var channel = "/chat";
     var socket = io.connect('http://' + document.domain + ':' + location.port + channel);
     var receivedMsg;
 
     socket.on('connect', function () {
-      socket.emit('joined', {});
+      socket.emit('joined', { data: { room: 'MainRoom' } });
     });
 
     socket.on('status', function(data) {
@@ -42,9 +88,9 @@
       receivedMsg = data;
       console.log(receivedMsg);
       console.log(receivedMsg.msg);
-      $('#chat').append('<li>' + data.msg + '\n');
+      $('#chat').append('<li>' + data.msg + '\n</li>');
     });
-    
+
     $('#messageText').keypress(function(e) {
       var code = e.keyCode || e.which;
       if (code == 13) {
@@ -58,19 +104,44 @@
         sendMessage();
     });
 
+    $('#submit').on("click", function() {
+      var name = $("#roomname").val();
+      console.log(name);
+      socket.emit('new_room', { data: { room: name } });
+      clearMessages();
+      socket.emit('left_room', {});
+    });
+
+
+    $('#chat-rooms').on( 'click', 'a', function () {
+      var chatroom = $(this)[0].innerText;
+      clearMessages();
+      socket.emit('left_room', {});
+      $('#chatroom-name').text(chatroom);
+      socket.emit('joined', { data: { room: chatroom } });
+    });
+
+    function clearMessages() {
+      $('.media-list li').detach();
+    }
+
     function sendMessage() {
         $container = $('.media-list');
         $container[0].scrollTop = $container[0].scrollHeight;
         var text = $("#messageText").val();
-        socket.emit('message', { data: { message: text} });
+        socket.emit('message', { data: { message: text } });
         $("#messageText").val("");
+      }
+
+      function titleCase(str) {
+        str = str.toLowerCase().split(' ');
+        for (var i = 0; i < str.length; i++) {
+          str[i] = str[i].charAt(0).toUpperCase() + str[i].slice(1); 
+        }
+        return str.join(' ');
       }
   });
   
-    /*function refreshMessages(message) {
-      $(".media-list").append('<li class="media"><div class="media-body"><div class="media"><div class="media-body">'
-        + message.data.message + '<br/><small class="text-muted">' + message.data.author + '</small><hr/></div></div></div></li>');
-    }*/
   </script>
 
 {% endblock %}

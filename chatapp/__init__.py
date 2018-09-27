@@ -2,6 +2,11 @@ from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
 
+
+# resolving ERROR: WebSocket transport not available. Install gevent for imporved perfomance
+from gevent import monkey
+monkey.patch_all()
+
 db = SQLAlchemy()
 socketio = SocketIO()
 

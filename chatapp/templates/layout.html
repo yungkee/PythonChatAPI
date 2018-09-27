@@ -12,12 +12,6 @@
       max-height: 500px;
     }
 
-    #active-users {
-      overflow: auto;
-      overflow-y: scroll;
-      height:88px;
-    }
-
     #chat-rooms {
       overflow: auto;
       overflow-y: scroll;
@@ -30,7 +24,7 @@
       height:470px;
     }
 
-    #submit-topic, #chat-rooms, #active-users {
+    #submit-room, #chat-rooms {
       margin-top: 1em;
       margin-bottom: 1em;
     }
@@ -54,16 +48,16 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="{{ url_for('home') }}">VeronaChat</a>
+          <a class="navbar-brand" href="{{ url_for('index') }}">VironaChat</a>
         </div>
         <div class="collapse navbar-collapse" id="navitems">
           <ul class="nav navbar-nav">
             {% if 'email' in session %}
             <li><a href="{{ url_for('chat') }}">Chat</a></li>
-            <li><a href="{{ url_for('logout') }}">Sign Out</a></li>
+            <li><a href="{{ url_for('logout') }}">Log Out</a></li>
             {% else %}
-            <li><a href="{{ url_for('register') }}">Sign Up</a></li>
-            <li><a href="{{ url_for('login') }}">Sign In</a></li>
+            <li><a href="{{ url_for('register') }}">Register</a></li>
+            <li><a href="{{ url_for('login') }}">Log In</a></li>
             {% endif %}
           </ul>
         </div>

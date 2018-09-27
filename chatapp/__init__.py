@@ -2,7 +2,6 @@ from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
 
-
 # resolving ERROR: WebSocket transport not available. Install gevent for imporved perfomance
 from gevent import monkey
 monkey.patch_all()
@@ -16,8 +15,5 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgres@localhos
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.debug = True
 db = SQLAlchemy(app)
-
-from chatapp.models import models as data_base_blueprint
-app.register_blueprint(data_base_blueprint)
-
 socketio.init_app(app)
+

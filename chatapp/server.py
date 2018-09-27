@@ -1,7 +1,7 @@
 from flask import Flask, request, session, escape, flash, render_template, url_for, flash, redirect
 from chatapp import app
 from validation import RegisterForm, LoginForm, RoomForm
-from chatapp.models import db, User, Room, Message
+from chatapp import models
 
 from flask_socketio import SocketIO, emit, join_room, leave_room
 

@@ -1,18 +1,39 @@
-from flask import Flask, request, session, escape, flash, render_template, url_for, flash, redirect
-from chatapp import app
-from validation import RegisterForm, LoginForm, RoomForm
-from chatapp import models
+from flask import Flask, request, session, flash, render_template, url_for, flash, redirect
+from chatapp import socketio
+from .validation import RegisterForm, LoginForm, RoomForm
+from .models import Room, User
+from flask_socketio import emit, join_room, leave_room
+from . import main 
 
-from flask_socketio import SocketIO, emit, join_room, leave_room
-
-@app.route('/')
+@main.route('/')
 def index():
     return render_template('index.hmtl')
 
-@app.route('/register', methods=['GET', 'POST']) 
+@main.route('/chat', methods = ['GET','POST'])
+def chat():
+    form = RoomForm()
+    rooms = Room.query.all()
+    users = User.query.all()
+
+    if 'email' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.filter_by(email = session['email']).first()
+
+    if user is None:
+        return redirect(url_for('login'))
+    else:
+        uid = user.id
+        newroom = Room(form.roomname.data, uid)
+        session['roo m'] = newroom.roomname
+        return redirect(url_for('chat'))
+
+    if request.method == 'GET':
+        return render_template('chat.html', form = form, topics = topics)
+
+@main.route('/register', methods=['GET', 'POST']) 
 def register():
     form = RegisterForm()
-
     session['room'] = 'General'
 
     if 'email' in session:
@@ -31,7 +52,7 @@ def register():
     if request.method == 'GET':
         return render_template('register.html', form = form)
 
-@app.route('/login', methods=['GET', 'POST']) #authorization
+@main.route('/login', methods=['GET', 'POST']) #authorization
 def login():
     form = LoginForm()
     session['room'] = 'MainRoom'
@@ -50,7 +71,7 @@ def login():
         return render_template('login.html', form = form)
 
 
-@app.route('/logout', methods =['POST'])
+@main.route('/logout', methods =['POST'])
 def logout():
     if 'email' not in session:
         return redirect(url_for('login'))
@@ -59,29 +80,7 @@ def logout():
     session.pop('room', None)
     return redirect(url_for('login'))
 
-@app.route('/chat', methods = ['GET','POST'])
-def chat():
-    form = RoomForm()
-    rooms = Room.query.all()
-    users = User.query.all()
-
-    if 'email' not in session:
-        return redirect(url_for('login'))
-
-    user = User.query.filter_by(email = session['email']).first()
-
-    if user is None:
-        return redirect(url_for('login'))
-    else:
-        uid = user.id
-        newroom = Room(form.roomname.data, uid)
-        session['room'] = newroom.roomname
-        return redirect(url_for('chat'))
-
-    if request.method == 'GET':
-        return render_template('chat.html', form = form, topics = topics)
-
-@socketio.on('new_room', namespace='/chat')
+@socketio.on('new_topic', namespace='/chat')
 def new_room(message):
     print("New topic \n")
     print(message)

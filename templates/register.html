@@ -7,7 +7,7 @@
   {% for message in form.username.errors %}
     <div class="flash">{{ message }}</div>
   {% endfor %}
-    
+  
   {% for message in form.email.errors %}
     <div class="flash">{{ message }}</div>
   {% endfor %}
@@ -21,7 +21,7 @@
     
     {{ form.username.label }}
     {{ form.username }}
-    
+      
     {{ form.email.label }}
     {{ form.email }}
     
@@ -33,4 +33,3 @@
 </div>
     
 {% endblock %}
-

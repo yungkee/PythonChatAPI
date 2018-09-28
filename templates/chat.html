@@ -5,17 +5,14 @@
     <div class="row">
       <div class="col-md-12">
         <div class="col-md-3">
-          <div class="panel panel-info">
+          <div class="panel panel-warning">
             <div class="panel-heading">
-              <strong>Active Users</strong>
+              <strong>Users</strong>
             </div>
             <ul id="active-users">
-              {% for user in users %}
-                  <li class="user"><a href="#{{ user.username }}">{{ user.username }}</a></li>
-              {% endfor %}
             </ul>
           </div>
-          <div class="panel panel-info">
+          <div class="panel panel-warning">
             <div class="panel-heading">
               <strong>List of chatrooms</strong>
             </div>
@@ -27,17 +24,15 @@
               {% endfor %}
             </ul>
           </div>
-          <div class="panel panel-info">
+          <div class="panel panel-warning">
             <div class="panel-heading">
-              <strong>Create chatroom</strong>
-            </div>
-            <div class="container-fluid">
-          </div>
+              <strong>create chatroom</strong>
+            </div>          
         </div>
         <div class="col-md-9">
-          <div class="panel panel-info">
+          <div class="panel panel-warning">
             <div class="panel-heading">
-              <strong><span class="glyphicon glyphicon-list"></span> Current chatroom: <span id="chatroom-name">MainRoom</strong>
+              <strong><span class="glyphicon glyphicon-list"></span> Current chatroom: <span id="chatroom-name">MainChat</strong>
             </div>
             <div class="panel-body fixed-panel">
               <ul class="media-list" id="chat">
@@ -66,7 +61,7 @@
     var receivedMsg;
 
     socket.on('connect', function () {
-      socket.emit('joined', { data: { room: 'General' } });
+      socket.emit('joinroom', { data: { room: 'MainChat' } });
     });
 
     socket.on('status', function(data) {
@@ -101,18 +96,18 @@
     $('#submit').on("click", function() {
       var name = $("#roomname").val();
       console.log(name);
-      socket.emit('new_room', { data: { room: name } });
+      socket.emit('createroom', { data: { room: name } });
       clearMessages();
-      socket.emit('left_room', {});
+      socket.emit('leaveroom', {});
     });
 
 
     $('#chat-rooms').on( 'click', 'a', function () {
       var chatroom = $(this)[0].innerText;
       clearMessages();
-      socket.emit('left_room', {});
+      socket.emit('leaveroom', {});
       $('#chatroom-name').text(chatroom);
-      socket.emit('joined', { data: { room: chatroom } });
+      socket.emit('joinroom', { data: { room: chatroom } });
     });
 
     function clearMessages() {
@@ -127,13 +122,13 @@
         $("#messageText").val("");
       }
 
-      function titleCase(str) {
-        str = str.toLowerCase().split(' ');
-        for (var i = 0; i < str.length; i++) {
-          str[i] = str[i].charAt(0).toUpperCase() + str[i].slice(1); 
-        }
-        return str.join(' ');
-      }
+      // function titleCase(str) {
+      //   str = str.toLowerCase().split(' ');
+      //   for (var i = 0; i < str.length; i++) {
+      //     str[i] = str[i].charAt(0).toUpperCase() + str[i].slice(1); 
+      //   }
+      //   return str.join(' ');
+      // }
   });
   </script>
 

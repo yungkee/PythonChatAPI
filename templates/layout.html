@@ -24,15 +24,9 @@
       height:470px;
     }
 
-    #submit-room, #chat-rooms {
+    #submit-topic, #chat-rooms {
       margin-top: 1em;
       margin-bottom: 1em;
-    }
-
-    .message {
-      border-bottom: 1px solid #FAFAFA;
-      padding: 1em;
-      margin-right: 1em;
     }
   </style>
   </head>
@@ -48,16 +42,16 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="{{ url_for('index') }}">VironaChat</a>
+          <a class="navbar-brand" href="{{ url_for('home') }}">VironaChat</a>
         </div>
         <div class="collapse navbar-collapse" id="navitems">
           <ul class="nav navbar-nav">
             {% if 'email' in session %}
             <li><a href="{{ url_for('chat') }}">Chat</a></li>
-            <li><a href="{{ url_for('logout') }}">Log Out</a></li>
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
             {% else %}
             <li><a href="{{ url_for('register') }}">Register</a></li>
-            <li><a href="{{ url_for('login') }}">Log In</a></li>
+            <li><a href="{{ url_for('login') }}">Login</a></li>
             {% endif %}
           </ul>
         </div>

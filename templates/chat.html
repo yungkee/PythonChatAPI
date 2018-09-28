@@ -10,6 +10,9 @@
               <strong>Users</strong>
             </div>
             <ul id="active-users">
+              {% for user in users %}
+                  <li class="user"><a href="#{{ user.email }}">{{ user.email }}</a></li>
+              {% endfor %}
             </ul>
           </div>
           <div class="panel panel-warning">
@@ -18,7 +21,7 @@
             </div>
             <ul id="chat-rooms">
               {% for room in rooms %}
-                {% if room.roomname %}
+                {% if room.topicname %}
                   <li class="room"><a href="#{{ room.roomname }}">{{ room.roomname }}</a></li>
                 {% endif %}
               {% endfor %}
@@ -26,13 +29,28 @@
           </div>
           <div class="panel panel-warning">
             <div class="panel-heading">
-              <strong>create chatroom</strong>
-            </div>          
+              <strong>Create chatroom</strong>
+            </div>
+            <div class="container-fluid">
+              {% for message in form.roomname.errors %}
+              <div class="flash">{{ message }}</div>
+              {% endfor %}
+      
+              <form id="submit-topic" action="{{ url_for('chat') }}" method="post">
+                {{ form.hidden_tag() }}
+                
+                {{ form.roomname.label }}
+                {{ form.roomcname }}
+                
+                {{ form.submit }}
+              </form>
+            </div>
+          </div>
         </div>
         <div class="col-md-9">
           <div class="panel panel-warning">
             <div class="panel-heading">
-              <strong><span class="glyphicon glyphicon-list"></span> Current chatroom: <span id="chatroom-name">MainChat</strong>
+              <strong><span class="glyphicon glyphicon-list"></span> current chatroom: <span id="chatroom-name">MainMenu </strong>
             </div>
             <div class="panel-body fixed-panel">
               <ul class="media-list" id="chat">
@@ -42,7 +60,7 @@
               <div class="input-group">
                 <input type="text" class="form-control" placeholder="Enter Message" id="messageText" autofocus/>
                 <span class="input-group-btn">
-                  <button class="btn btn-info" type="button" id="sendMessage">SEND <span class="glyphicon glyphicon-circle-arrow-right"></span></button>
+                  <button class="btn btn-primary" type="button" id="sendMessage">SEND <span class="glyphicon glyphicon-pencil"></span></button>
                 </span>
               </div>
             </div>

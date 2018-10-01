@@ -8,9 +8,19 @@ app = Flask(__name__)
 app.debug = True
 app.config['SECRET_KEY'] = '6666'
 socketio = SocketIO(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root@localhost/development'
+app.config['SQLALCHEMY_DATABASE_URI'] = ''
 
 db.init_app(app)
+
+
+def connectToDB():
+	connectionString = ''
+	try:
+		return psycopg2.connect(connectionString)
+	except:
+		print('Cant` connect to database')
+
+
 
 @app.route('/')
 def home():
@@ -45,7 +55,7 @@ def chat():
 def register():
 	form = RegisterForm()
 
-	session['room'] = 'MainChat'
+	session['room'] = ''
 
 	if 'email' in session:
 		return redirect(url_for('chat')) 
@@ -67,7 +77,7 @@ def register():
 def login():
 	form = LoginForm()
 
-	session['room'] = 'MainChat'
+	session['room'] = 'main chat'
 
 	if 'email' in session:
 		return redirect(url_for('chat')) 
@@ -99,7 +109,9 @@ def joinroom(message):
 	join_room(room)
 	print(session.get('email'))
 	print('has joined')
-	emit('status', {'msg': session.get('email') + ' has entered ' + room + '.'}, room=room)
+	joinMessage = {'msg': session.get('email') + 'has joined ' + room + '.'}
+	emit('status', joinMessage, broadcast = True, room=room)
+
 
 @socketio.on('leaveroom', namespace='/chat')
 def leaveroom(message):
@@ -107,7 +119,8 @@ def leaveroom(message):
     leave_room(room)
     print(session.get('username'))
     print('left room')
-    emit('status', {'msg': session.get('username') + ' has left ' + room + '.'}, room=room)
+    leaveMessage = {'msg': session.get('username') + 'has left' + room + '.'}
+    emit('status', leaveMessage, room=room)
     session.pop('room', None)
 
 @socketio.on('createroom', namespace='/chat')
@@ -121,6 +134,4 @@ print("Python server running on http://127.0.0.1:5000")
 if __name__ == '__main__':
 	socketio.run(app)
 
-# print("Python server running on http://127.0.0.1:5000")
-# if __name__ == '__main__':
-# 	socketio.run(app, debug=True, host='localhost', port=5000)
+

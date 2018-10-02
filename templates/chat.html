@@ -7,12 +7,23 @@
         <div class="col-md-3">
           <div class="panel panel-warning">
             <div class="panel-heading">
+              <strong><span class="glyphicon glyphicon-globe"></span>Welcome: <span id="user-name">{{ session['username'] }}</strong>
+            </div>
+          </div>
+          <div class="panel panel-warning">
+            <div class="panel-heading">
               <strong>Users</strong>
             </div>
             <ul id="active-users">
-<!--               {% for user in users %}
-                  <li class="user"><a href="#{{ user.username }}">{{ user.username }}</a></li>
-              {% endfor %} -->
+              {% for user in users %}
+                {% if user.topic_name == session['room'] %}
+                  {% if user.email == session['email'] %}
+<!--                     <li class="user"><a href="/private_chat/{{ user.email }}">{{ user.email }}</a></li>
+                  {% else %} -->
+                    <li class="user">{{ user.email }}</li>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
             </ul>
           </div>
           <div class="panel panel-warning">
@@ -22,7 +33,7 @@
             <ul id="chat-rooms">
               {% for room in rooms %}
                 {% if room.topicname %}
-                  <li class="room"><a href="#{{ room.roomname }}">{{ room.roomname }}</a></li>
+                  <li class="room"><a href="/chat/{{ room.topicname }}">{{ room.topicname }}</a></li>
                 {% endif %}
               {% endfor %}
             </ul>
@@ -32,15 +43,15 @@
               <strong>Create chatroom</strong>
             </div>
             <div class="container-fluid">
-              {% for message in form.roomname.errors %}
-              <div class="flash">{{ message }}</div>
+              {% for message in form.topicname.errors %}
+              <div class="alert alert-danger margin-top">{{ message }}</div>
               {% endfor %}
       
-              <form id="submit-topic" action="{{ url_for('chat') }}" method="post">
+              <form id="submit-room" action="{{ url_for('chat') }}" method="post">
                 {{ form.hidden_tag() }}
                 
-                {{ form.roomname.label }}
-                {{ form.roomcname }}
+                {{ form.topicname.label }}
+                {{ form.topicname }}
                 
                 {{ form.submit }}
               </form>
@@ -50,17 +61,22 @@
         <div class="col-md-9">
           <div class="panel panel-warning">
             <div class="panel-heading">
-              <strong><span class="glyphicon glyphicon-list"></span> current chatroom: <span id="chatroom-name">main chat </strong>
+              <strong><span class="glyphicon glyphicon-globe"></span> Current chatroom: <span id="chatroom-name">{{ session['room'] }}</strong>
             </div>
             <div class="panel-body fixed-panel">
               <ul class="media-list" id="chat">
+                {% for message in messages %}
+                {% if message.topic_name == session['room'] %}
+                  <li class="message">{{ message.text }}<br />posted by {{ message.user_email }} at {{ message.posted }}</li>
+                {% endif %}
+              {% endfor %}
               </ul>
             </div>
             <div class="panel-footer">
               <div class="input-group">
                 <input type="text" class="form-control" placeholder="Enter Message" id="messageText" autofocus/>
                 <span class="input-group-btn">
-                  <button class="btn btn-success" type="button" id="sendMessage">SEND <span class="glyphicon glyphicon-pencil"></span></button>
+                  <button class="btn btn-warning" type="button" id="sendMessage">SEND <span class="glyphicon glyphicon-circle-arrow-right"></span></button>
                 </span>
               </div>
             </div>
@@ -72,30 +88,42 @@
 </div>
 <script>
   $(document).ready(function() {
-    $('#submit').addClass('btn').addClass('btn-outline-warning').css('margin-top', '1em');
-    $('#roomname').addClass('form-control');
+    $('#submit').addClass('btn').addClass('btn-warning').css('margin-top', '1em');
+    $('#topicname').addClass('form-control');
     var channel = "/chat";
     var socket = io.connect('http://' + document.domain + ':' + location.port + channel);
-    var receivedMessage;
+    var receivedMsg;
 
-    // socket.on('connect', function () {
-    //   socket.emit('joinroom', { data: { room: 'main chat' } });
-    // });
+    var room = $("#chatroom-name").text()
+
+    $(window).bind('beforeunload',function(){
+      socket.emit('leaveroom', {});
+    });
+    $("#chat").animate({ scrollTop: $("#chat").prop("scrollHeight") - $('#chat').height() }, 100);
+
+    socket.on('connect', function () {
+      socket.emit('joinroom', { data: { room: room } });
+    });
 
     socket.on('status', function(data) {
-      console.log(data);
-      $('#chat').append('<li>' + data.msg + '\n');
+      $('#chat').append('<li class="message">' + data.msg + '</li>');
+      if (data.msg.includes("has entered") && $('.user:contains("' + data.user + '")').length == 0) {
+        $('#active-users').append('<li class="user">' + data.user + '</li>');
+      } else if (data.msg.includes("has left")) {
+        $('.user:contains("' + data.user + '")').remove();
+      }
+      $("#chat").animate({ scrollTop: $("#chat").prop("scrollHeight") - $('#chat').height() }, 100);
     });
     
     socket.on('message', function(data) {
-      receivedMessage = data;
-      console.log(receivedMessage);
-      console.log(receivedMessage.msg);
-      $('#chat').append('<li>' + data.msg + '\n</li>');
+      receivedMsg = data;
+      console.log(receivedMsg);
+      $('#chat').append('<li class="message">' + data.text + '<br />' + 'posted by ' + data.author + data.time + '</li>');
+      $("#chat").animate({ scrollTop: $("#chat").prop("scrollHeight") - $('#chat').height() }, 100);
     });
 
-    socket.on('update_topics', function(data) {
-      $('#chat-rooms').append('<li class="room"><a href="#' + titleCase(data.msg.room) + '">' + titleCase(data.msg.room) + '</a></li>');
+    socket.on('update_rooms', function(data) {
+      $('#chat-rooms').append('<li class="room"><a href="/chat/' + titleCase(data.msg.room) + '">' + titleCase(data.msg.room) + '</a></li>');
     });
     
     $('#messageText').keypress(function(e) {
@@ -112,19 +140,21 @@
     });
 
     $('#submit').on("click", function() {
-      var name = $("#roomname").val();
-      console.log(name);
-      socket.emit('createroom', { data: { room: name } });
-      clearMessages();
-      socket.emit('leaveroom', {});
-    });
+      if ($('.alert')) {
 
+      } else {
+        var name = $("#topicname").val();
+        console.log(name);
+        socket.emit('create_room', { data: { room: name } });
+        clearMessages();
+        socket.emit('leaveroom', {});
+      }
+    });
 
     $('#chat-rooms').on( 'click', 'a', function () {
       var chatroom = $(this)[0].innerText;
       clearMessages();
       socket.emit('leaveroom', {});
-      $('#chatroom-name').text(chatroom);
       socket.emit('joinroom', { data: { room: chatroom } });
     });
 
@@ -133,20 +163,20 @@
     }
 
     function sendMessage() {
-        $container = $('.media-list');
-        $container[0].scrollTop = $container[0].scrollHeight;
-        var text = $("#messageText").val();
-        socket.emit('message', { data: { message: text } });
-        $("#messageText").val("");
-      }
+      $container = $('.media-list');
+      $container[0].scrollTop = $container[0].scrollHeight;
+      var text = $("#messageText").val();
+      socket.emit('message', { data: { message: text } });
+      $("#messageText").val("");
+    }
 
-      // function titleCase(str) {
-      //   str = str.toLowerCase().split(' ');
-      //   for (var i = 0; i < str.length; i++) {
-      //     str[i] = str[i].charAt(0).toUpperCase() + str[i].slice(1); 
-      //   }
-      //   return str.join(' ');
-      // }
+    function titleCase(str) {
+      str = str.toLowerCase().split(' ');
+      for (var i = 0; i < str.length; i++) {
+        str[i] = str[i].charAt(0).toUpperCase() + str[i].slice(1); 
+      }
+      return str.join(' ');
+    }
   });
   </script>
 

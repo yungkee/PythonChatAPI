@@ -2,7 +2,7 @@ from flask import Flask, render_template, session, request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask import render_template, request, flash, session, url_for, redirect
 from validation import RegisterForm, LoginForm, RoomForm
-from models import db, User, Topic, Message
+from models import db, User, Topic, Message, BannedUser, Admin
 import datetime
 
 app = Flask(__name__)
@@ -12,7 +12,6 @@ socketio = SocketIO(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root@localhost/development'
 
 db.init_app(app)
-
 
 @app.route('/')
 def home():
@@ -24,30 +23,54 @@ def chat():
 	rooms = Topic.query.all()
 	users = User.query.all()
 	messages = Message.query.all()
+	banned_from = [];
+	admin_rooms = [];
 
 	session['room'] = 'MainChat'
 
 	if 'email' not in session:
-		return redirect(url_for('login'))
+		return redirect(url_for('signin'))
 
 	user = User.query.filter_by(email = session['email']).first()
 
+	if BannedUser.query.filter_by(user_id=user.uid).first() is not None:
+		flagged_rooms = BannedUser.query.filter_by(user_id=user.uid).all()
+		for room in flagged_rooms:
+			if room.times_flagged >= 5 and room.topic_id != 1:
+				print("banned from:")
+				print(room.topic_id)
+				banned_from.append(room.topic_id)
+
+	if Admin.query.filter_by(user_id=user.uid).first() is not None:
+		print("Admin exists")
+		admin_for = Admin.query.filter_by(user_id=user.uid).all()
+		for room in admin_for:
+			print("adm")
+			print(room.topic_id)
+			if room.topic_id != 1:
+				admin_rooms.append(Topic.query.filter_by(uid=room.topic_id).first().topicname)
+
 	if user is None:
-		return redirect(url_for('login'))
+		return redirect(url_for('signin'))
 	else:
+		session['uid'] = user.uid
 		if request.method == 'POST':
 			if form.validate() == False:
-				return render_template('chat.html', form=form, rooms=rooms, users=users, messages=messages)
+				return render_template('chat.html', form=form, rooms=rooms, users=users, messages=messages, banned_from=banned_from, admin_rooms=admin_rooms)
 			else:
 				uid = user.uid
 				newroom = Topic(form.topicname.data, uid)
 				db.session.add(newroom)
 				db.session.commit()
 				session['topic'] = newroom.topicname
+				newroom = Topic.query.filter_by(topicname=form.topicname.data).first()
+				mod = Admin(user.uid, newroom.uid)
+				db.session.add(mod)
+				db.session.commit()
 				return redirect('/chat/' + newroom.topicname)
 		
 		if request.method == 'GET':
-			return render_template('chat.html', form=form, rooms=rooms, users=users, messages=messages)
+			return render_template('chat.html', form=form, topics=topics, users=users, messages=messages, banned_from=banned_from, admin_rooms=admin_rooms)
 
 @app.route('/chat/<chatroom_title>')
 def show_chatroom(chatroom_title):
@@ -55,10 +78,36 @@ def show_chatroom(chatroom_title):
 	rooms = Topic.query.all()
 	users = User.query.all()
 	messages = Message.query.all()
+	banned_from = []
+	admin_rooms = []
+	banned_user = []
 
 	room = Topic.query.filter_by(topicname = chatroom_title).first()
 
+	user = User.query.filter_by(email = session['email']).first()
+
+	if BannedUser.query.filter_by(user_id = user.uid).first() is not None:
+		users = BannedUser.query.filter_by(topic_id = topic.uid).all()
+		for local_user in users:
+			if local_user in users:
+				if local_user.times_flagged >= 5 and room.topic_id != 1:
+					print("banned from:")
+					print("room.topic_id")
+					banned_from.append(room.topic_id)
+
+	if Admin.query.filter_by(user_id = user.uid).first() is not None:
+		print("admin exists")
+		adm_for = Admin.query.filter_by(user_id = user_uid).all()
+		for room in adm_for:
+			print("adm")
+			print(room.topic_id)
+			if room.topic_id != 1:
+				admin_rooms.append(Topic.query.filter_by(uid=room.topic_id).first().topicname)
+
 	if room is None:
+		return redirect(url_for('chat'))
+
+	if room.uid in banned_from:
 		return redirect(url_for('chat'))
 
 	session['room'] = room.topicname
@@ -73,22 +122,26 @@ def show_chatroom(chatroom_title):
 	else:
 		if request.method == 'POST':
 			if form.validate() == False:
-				return render_template('chat.html', form=form, rooms=rooms, users=users, messages=messages)
+				return render_template('chat.html', form=form, rooms=rooms, users=users, messages=messages, banned_from = banned_from, admin_rooms = admin_rooms)
 			else:
 				uid = user.uid
 				newroom = Topic(form.topicname.data, uid)
 				db.session.add(newroom)
 				db.session.commit()
 				session['room'] = newroom.topicname
+				newroom = Topic.query.filter_by(topicname = form.topicname.data).first()
+				adm = Admin(user.uid, newroom.uid)
+				db.session.add()
+				db.session.commit()
 				return redirect('/chat/' + newroom.topicname)
 		
 		if request.method == 'GET':
-			return render_template('chat.html', form=form, rooms=rooms, users=users, messages=messages)
+			return render_template('chat.html', form=form, rooms=rooms, users=users, messages=messages, banned_from = banned_from, admin_rooms = admin_rooms)
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
 	form = RegisterForm()
-
 	session['room'] = 'MainChat'
 
 	if 'email' in session:
@@ -102,10 +155,14 @@ def register():
 			db.session.add(newuser)
 			db.session.commit()
 			session['email'] = newuser.email
+			session['username'] = newuser.username
 			return redirect(url_for('chat'))
 	
 	if request.method == 'GET':
 		return render_template('register.html', form=form)
+
+
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -142,6 +199,27 @@ def create_room(message):
 	print(message['data']['room'])
 	emit('update_rooms', {'msg': { 'room': message['data']['room'] }}, broadcast=True)
 
+@socketio.on('added_admin', namespace='/chat')
+def create_room(message):
+	print("Added")
+	print(message['data']['user'])
+	user = User.query.filter_by(email=message['data']['user']).first()
+	room = Topic.query.filter_by(topicname=session.get('room')).first()
+	adm = Admin(user.uid, room.uid)
+	db.session.add(adm)
+	db.session.commit()
+
+@socketio.on('removed_admin', namespace='/chat')
+def create_room(message):
+	print("Removed")
+	print(message['data']['user'])
+	user = User.query.filter_by(email=message['data']['user']).first()
+	room = Topic.query.filter_by(topicname=session.get('room')).first()
+	for adm in Admin.query.filter_by(user_id=user.id):
+		if adm.topic_id == room.id:
+			db.session.delete(mod)
+			db.session.commit()
+
 @socketio.on('joinroom', namespace='/chat')
 def joinroom(message):
 	print('message =', message)
@@ -158,6 +236,39 @@ def joinroom(message):
 	print(session['room'])
 	db.session.commit()
 
+@socketio.on('banned', namespace='/chat')
+def banned(message):
+	print("ban")
+	print(message)
+	banned_user = User.query.filter_by(username = message['data']['user']).first()
+	room = Topic.query.filter_by(topicname = message['data']['room']).first()
+	banned_user = BannedUser(banned_user.uid, room.uid)
+	banned_user.times_flagged = 500
+	banFromRoom(banned_user.user_id, room_uid)
+	db.session.add(banned_user)
+	db.session.commit()
+
+@socketio.on('unbanned', namespace ='/chat')
+def unbanned(message):
+	print("unban")
+	print(message)
+	unbanned_user = User.query.filter_by(username=message['data']['user']).first()
+	room = Topic.query.filter_by(topicname=message['data']['room']).first()
+	if BannedUser.query.filter_by(user_id = unbanned_user.uid).first() is not None:
+		for local_user in BannedUser.query.filter_by(user_id=unbanned_user.uid):
+			if local_user.topic_uid == room.uid:
+				unbanned_info = {'user': unbanned_user.username,'room': room.topicname}
+				emit('unbanned', unbanned_info, broadcast = True)
+				db.session.delete(local_user)
+				db.session.commit()
+
+
+
+def banFromRoom(user_id, room_id):
+	user = User.query.filter_by(uid = user_id).first()
+	room = Topic.query.filter_by(uid = room_id).first()
+	banned_info = {'user': user.username,'room': room.topicname}
+	emit('banned', banned_info, broadcast = True)
 
 @socketio.on('message', namespace='/chat')
 def chat_message(message):
@@ -190,9 +301,6 @@ def leaveroom(message):
     session.pop('room', None)
     user.topic_name = None
     db.session.commit()
-
-
-
 
 if __name__ == '__main__':
 	socketio.run(app)

@@ -8,6 +8,9 @@
           <div class="panel panel-warning">
             <div class="panel-heading">
               <strong><span class="glyphicon glyphicon-globe"></span>Welcome: <span id="user-name">{{ session['username'] }}</strong>
+              {% if session['room'] in admin_rooms %}
+              <span class="hidden admin">Admin</span>
+              {% endif %}
             </div>
           </div>
           <div class="panel panel-warning">
@@ -17,15 +20,37 @@
             <ul id="active-users">
               {% for user in users %}
                 {% if user.topic_name == session['room'] %}
-                  {% if user.email == session['email'] %}
-<!--                     <li class="user"><a href="/private_chat/{{ user.email }}">{{ user.email }}</a></li>
-                  {% else %} -->
-                    <li class="user">{{ user.email }}</li>
+                  {% if session['room'] in admin_rooms %}
+                    <li class="user">{{ user.username }} <a class="ban">[ban]</a></li>
+                  {% endif %}
+                  {% if session['room'] not in admin_rooms %}
+                    <li class="user">{{ user.username }}</li>
                   {% endif %}
                 {% endif %}
               {% endfor %}
             </ul>
           </div>
+          {% if session['room'] in admin_rooms and banned_users %}
+          <div class="panel panel-info">
+            <div class="panel-heading">
+              <strong>Banned Users</strong>
+            </div>
+            <ul id="banned-users">
+              {% for user in banned_users %}
+                <li class="user">{{ user }} <a class="unban">[unban]</a></li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          {% if session['room'] in admin_rooms and not banned_users %}
+          <div class="panel panel-info hidden">
+            <div class="panel-heading">
+              <strong>Banned Users</strong>
+            </div>
+            <ul id="banned-users">
+            </ul>
+          </div>
+          {% endif %}
           <div class="panel panel-warning">
             <div class="panel-heading">
               <strong>List of chatrooms</strong>
@@ -125,6 +150,49 @@
     socket.on('update_rooms', function(data) {
       $('#chat-rooms').append('<li class="room"><a href="/chat/' + titleCase(data.msg.room) + '">' + titleCase(data.msg.room) + '</a></li>');
     });
+
+    socket.on('banned', function(data) {
+      console.log("banned:");
+      console.log(data);
+      console.log(data['user']);
+      var user = (data['user']).toString();
+      var li = '<li class="user">' + user + ' <a class="unban">[unban]</a></li>';
+      if (room === data['room'] && $("#user-name").text() === data['user']) {
+        socket.emit('left', {});
+        window.location.replace("/chat");
+      }
+      if (room === data['room'] && $("#user-name").text() !== data['user']) {
+        if ($("#banned-users").parent().hasClass("hidden")) {
+          console.log("hidden");
+          console.log($("#banned-users"));
+          $("#banned-users").parent().removeClass("hidden");
+          console.log($("#banned-users").length);
+          console.log(li);
+          $("#banned-users").append(li);
+          addUnbanClick($(".unban"));
+        } else {
+          $("#banned-users").append(li);
+          addUnbanClick($(".unban"));
+        }
+      }
+    });
+
+    socket.on('unbanned', function(data) {
+      console.log("unbanned");
+      console.log(data);
+      var room = data['room'];
+      if (room == data['room'] && $("#user-name").text() == data['user']) {
+        console.log("match");
+        $('#chat-rooms').append('<li id="' + titleCase(room) + '" class="room"><a href="/chat/' + titleCase(room) + '">' + titleCase(room) + '</a></li>');
+      } else {
+        if ($("#banned-users li").length == 0) {
+          console.log("hi");
+          $("#banned-users").parent().addClass("hidden");
+        } else {
+          $('#banned-users .user:contains("' + user + '")').remove();
+        }
+      }
+    });  
     
     $('#messageText').keypress(function(e) {
       var code = e.keyCode || e.which;
@@ -133,6 +201,27 @@
         sendMessage();
         $('#messageText').val('');
       }
+    });
+
+
+    $(".unban").on("click", function () {
+        var user = $(this).parent().text().replace("[unban]", "").trim();
+        var room = $("#chatroom-name").text();
+        socket.emit('unbanned', { data: { user: user, room: room} });
+        console.log($("#banned-users li").length);
+        if ($("#banned-users li").length === 0) {
+          $("#banned-users").parent().addClass("hidden");
+        } else {
+          console.log("hi");
+          $('#banned-users .user:contains("' + user + '")').remove();
+        }
+    });
+
+    $(".ban").on("click", function() {
+        var user = $(this).parent().text().replace("[ban]", "").replace("[+]", "").replace("[-]", "").trim();
+        console.log(user);
+        var room = $("#chatroom-name").text();
+        socket.emit('banned', { data: { user: user, room: room} });
     });
 
     $("#sendMessage").on("click", function () {
@@ -157,6 +246,29 @@
       socket.emit('leaveroom', {});
       socket.emit('joinroom', { data: { room: chatroom } });
     });
+
+   function addUnbanClick(e) {
+    e.on("click", function() {
+        var user = $(this).parent().text().replace("[unban]", "").trim();
+        var room = $("#chatroom-name").text();
+        socket.emit('unbanned', { data: { user: user, room: room} });
+        if ($("#banned-users li").length == 0) {
+          console.log("hi");
+          $("#banned-users").parent().addClass("hidden");
+        } else {
+          $('#banned-users .user:contains("' + user + '")').remove();
+        }
+    });
+   }
+
+   function addBanClick(e) {
+      e.on("click", function() {
+        var user = $(this).parent().text().replace("[ban]", "").replace("[+]", "").replace("[-]", "").trim();
+        console.log(user);
+        var room = $("#chatroom-name").text();
+        socket.emit('banned', { data: { user: user, room: room} });
+      });
+   }
 
     function clearMessages() {
       $('.media-list li').detach();

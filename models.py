@@ -16,7 +16,25 @@ class User(db.Model):
     self.email = email.lower()
     self.password = password
     
+class BannedUser(db.Model):
+  id = db.Column(db.Integer, primary_key = True)
+  user_id = db.Column(db.Integer, db.ForeignKey('user.uid'))
+  topic_id = db.Column(db.Integer, db.ForeignKey('topic.uid'))
+  times_flagged  = db.Column(db.Integer)
 
+  def __init__(self, user_id, topic_id):
+    self.user_id = user_id
+    self.topic_id = topic_id
+    self.times_flagged = 0
+
+class Admin(db.Model):
+  id = db.Column(db.Integer, primary_key = True)
+  user_id = db.Column(db.Integer, db.ForeignKey('user.uid'))
+  topic_id = db.Column(db.Integer, db.ForeignKey('topic.uid'))
+
+  def __init__(self, user_id, topic_id):
+    self.user_id = user_id
+    self.topic_id = topic_id
 
 class Topic(db.Model):
   uid = db.Column(db.Integer, primary_key = True)

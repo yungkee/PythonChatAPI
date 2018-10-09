@@ -15,6 +15,9 @@ class User(db.Model):
     self.username = username.title()
     self.email = email.lower()
     self.password = password
+
+  def __str__(self):
+    return str(self.uid) + "_" + str(self.username) + "_" + str(self.email) +  "_" + str(self.messages)
     
 class BannedUser(db.Model):
   id = db.Column(db.Integer, primary_key = True)
@@ -61,3 +64,6 @@ class Message(db.Model):
     self.user_email = user_email
     self.topic_id = topic_id
     self.topic_name = topic
+
+class Post(models.Model):
+  title = models.CharField(max_length = 100,)

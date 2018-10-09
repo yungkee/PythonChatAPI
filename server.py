@@ -13,6 +13,19 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root@localhost/development'
 
 db.init_app(app)
 
+
+def connect(params):
+	#Connect to the PostgresSQL database server
+	conn = None
+	try:
+		print("Connecting to the PostgresSQL database....")
+		conn = psycopg2.connect(**params)
+		return conn
+	except(Exception, psycopg2.DatabaseError) as error:
+		print(error)
+	return conn
+
+
 @app.route('/')
 def home():
 	return render_template('home.html')
@@ -23,8 +36,8 @@ def chat():
 	rooms = Topic.query.all()
 	users = User.query.all()
 	messages = Message.query.all()
-	banned_from = [];
-	admin_rooms = [];
+	banned_from = []
+	admin_rooms = []
 
 	session['room'] = 'MainChat'
 
@@ -32,6 +45,14 @@ def chat():
 		return redirect(url_for('signin'))
 
 	user = User.query.filter_by(email = session['email']).first()
+
+	if BannedUser.query.filter_by(used_id = user.uid).first() is not None:
+		flagged_rooms = BannedUser.query.filter_by(user_id = user.uid).all()
+		for room in flagged_rooms:
+			if room.times_flagged >= 5 and room.topic_id != 1:
+				print("banned from:")
+				print(room.topic_id)
+				banned_from.append(room.topic_id)
 
 	if BannedUser.query.filter_by(user_id=user.uid).first() is not None:
 		flagged_rooms = BannedUser.query.filter_by(user_id=user.uid).all()
@@ -85,6 +106,14 @@ def show_chatroom(chatroom_title):
 	room = Topic.query.filter_by(topicname = chatroom_title).first()
 
 	user = User.query.filter_by(email = session['email']).first()
+
+	if BannedUser.query.filter_by(user_id = user.uid).first() is not None:
+		flagged_rooms = BannedUser.query.filter_by(user_id = user.uid).all()
+		for room in flagged_rooms:
+			if room.times_flagged >= 5 and room.topic_id != 1:
+				print("banned_from:")
+				print("room.topic_id")
+				banned_from.append(room.topic_id)
 
 	if BannedUser.query.filter_by(user_id = user.uid).first() is not None:
 		users = BannedUser.query.filter_by(topic_id = topic.uid).all()
@@ -263,7 +292,6 @@ def unbanned(message):
 				db.session.commit()
 
 
-
 def banFromRoom(user_id, room_id):
 	user = User.query.filter_by(uid = user_id).first()
 	room = Topic.query.filter_by(uid = room_id).first()
@@ -288,7 +316,6 @@ def chat_message(message):
 	db.session.add(message)
 	db.session.commit()
 
-
 @socketio.on('leaveroom', namespace='/chat')
 def leaveroom(message):
     room = session.get('room')
@@ -302,5 +329,32 @@ def leaveroom(message):
     user.topic_name = None
     db.session.commit()
 
+@socketio.on('delete_my_chatroom', namespace='/chat')
+def delete_my_chatroom(message):
+	print("delete_chatroom")
+	print("This is message\n")
+	print(message)
+	topic_id = message['data']['id']
+	parent = message['data']['parent']
+	topic = Room.query.filter_by(uid = topic_id).first()
+	print("hi")
+	for room in BannedUser.query.filter_by(topic_id = topic_id):
+		print(room.topic_id)
+		db.session.delete(room)
+	print("do")
+	for adm in Admin.query.filter_by(topic_id = topic_id):
+		print(adm.topic_id)
+		db.session.delete(adm)
+	for message in Message.query.filter_by(topic_name = topic.topicname):
+		print(message.text)
+		db.session.delete(topic)
+	db.session.delete(topic)
+	db.session.commit()
+	delete_msg = {'msg': parent}
+	emit('delete_my_chatroom', delete_msg, broadcast = True)
+
 if __name__ == '__main__':
 	socketio.run(app)
+
+
+

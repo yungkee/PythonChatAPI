@@ -7,17 +7,17 @@
         <div class="col-md-3">
           <div class="panel panel-warning">
             <div class="panel-heading">
-              <strong><span class="glyphicon glyphicon-globe"></span>Welcome: <span id="user-name">{{ session['username'] }}</strong>
+              <strong><span class="glyphicon glyphicon-list"></span>Welcome: <span id="user-name">{{ session['username'] }}</strong>
               {% if session['room'] in admin_rooms %}
               <span class="hidden admin">Admin</span>
               {% endif %}
             </div>
           </div>
           <div class="panel panel-warning">
-            <div class="panel-heading">
-              <strong>Users</strong>
+            <div class="panel-heading down" data-toggle="collapse" data-target="#active-users">
+              <strong>Users in current room</strong> <span class="glyphicon glyphicon glyphicon-chevron-down" aria-hidden="true"></span><span class="glyphicon glyphicon-chevron-up hidden" aria-hidden="true"></span>
             </div>
-            <ul id="active-users">
+            <ul id="active-users" class="collapse in">
               {% for user in users %}
                 {% if user.topic_name == session['room'] %}
                   {% if session['room'] in admin_rooms %}
@@ -31,11 +31,11 @@
             </ul>
           </div>
           {% if session['room'] in admin_rooms and banned_users %}
-          <div class="panel panel-info">
-            <div class="panel-heading">
-              <strong>Banned Users</strong>
+          <div class="panel panel-warning">
+            <div class="panel-heading down" data-toggle="collapse" data-target="#banned-users">
+              <strong>Banned Users</strong> <span class="glyphicon glyphicon glyphicon-chevron-down" aria-hidden="true"></span><span class="glyphicon glyphicon-chevron-up hidden" aria-hidden="true"></span>
             </div>
-            <ul id="banned-users">
+            <ul id="banned-users" class="collapse">
               {% for user in banned_users %}
                 <li class="user">{{ user }} <a class="unban">[unban]</a></li>
               {% endfor %}
@@ -43,22 +43,28 @@
           </div>
           {% endif %}
           {% if session['room'] in admin_rooms and not banned_users %}
-          <div class="panel panel-info hidden">
-            <div class="panel-heading">
-              <strong>Banned Users</strong>
+          <div class="panel panel-warning hidden">
+            <div class="panel-heading down" data-toggle="collapse" data-target="#banned-users">
+              <strong>Banned Users</strong> <span class="glyphicon glyphicon glyphicon-chevron-down" aria-hidden="true"></span><span class="glyphicon glyphicon-chevron-up hidden" aria-hidden="true"></span>
             </div>
-            <ul id="banned-users">
+            <ul id="banned-users" class="collapse">
             </ul>
           </div>
           {% endif %}
           <div class="panel panel-warning">
-            <div class="panel-heading">
-              <strong>List of chatrooms</strong>
+            <div class="panel-heading down" data-toggle="collapse" data-target="#chat-rooms">
+              <strong>Available Chatrooms</strong> <span class="glyphicon glyphicon glyphicon-chevron-down" aria-hidden="true"></span><span class="glyphicon glyphicon-chevron-up hidden" aria-hidden="true"></span>
             </div>
-            <ul id="chat-rooms">
+            <ul id="chat-rooms" class="collapse">
               {% for room in rooms %}
                 {% if room.topicname %}
-                  <li class="room"><a href="/chat/{{ room.topicname }}">{{ room.topicname }}</a></li>
+                  {% if room.uid not in banned_from %}
+                  <li id="{{room.topicname}}" class="room"><a href="/chat/{{ room.topicname }}">{{ room.topicname }}</a>
+                    {% if room.user_id == session['uid'] or room.uid in admin_rooms %}
+                      <span id="{{room.uid}}" class="remove_chatroom_btn" onclick="remove_chatroom(this)"><span class="glyphicon glyphicon-remove-sign" style="padding-left: 10px;"></span></span>
+                    {% endif %}
+                  {% endif %}
+                  </li>
                 {% endif %}
               {% endfor %}
             </ul>
@@ -67,12 +73,12 @@
             <div class="panel-heading">
               <strong>Create chatroom</strong>
             </div>
-            <div class="container-fluid">
+            <div class="container-fluid" id="add-chatroom">
               {% for message in form.topicname.errors %}
               <div class="alert alert-danger margin-top">{{ message }}</div>
               {% endfor %}
       
-              <form id="submit-room" action="{{ url_for('chat') }}" method="post">
+              <form id="submit-topic" action="{{ url_for('chat') }}" method="post">
                 {{ form.hidden_tag() }}
                 
                 {{ form.topicname.label }}
@@ -86,20 +92,15 @@
         <div class="col-md-9">
           <div class="panel panel-warning">
             <div class="panel-heading">
-              <strong><span class="glyphicon glyphicon-globe"></span> Current chatroom: <span id="chatroom-name">{{ session['room'] }}</strong>
+              <strong><span class="glyphicon glyphicon-list"></span> Current chatroom: <span id="chatroom-name">{{ session['room'] }}</strong>
             </div>
             <div class="panel-body fixed-panel">
               <ul class="media-list" id="chat">
-                {% for message in messages %}
-                {% if message.topic_name == session['room'] %}
-                  <li class="message">{{ message.text }}<br />posted by {{ message.user_email }} at {{ message.posted }}</li>
-                {% endif %}
-              {% endfor %}
               </ul>
             </div>
             <div class="panel-footer">
               <div class="input-group">
-                <input type="text" class="form-control" placeholder="Enter Message" id="messageText" autofocus/>
+                <input type="text" class="form-control" paceholder="Enter Message" id="messageText" autofocus/>
                 <span class="input-group-btn">
                   <button class="btn btn-warning" type="button" id="sendMessage">SEND <span class="glyphicon glyphicon-circle-arrow-right"></span></button>
                 </span>
@@ -112,6 +113,9 @@
   </div>
 </div>
 <script>
+
+
+
   $(document).ready(function() {
     $('#submit').addClass('btn').addClass('btn-warning').css('margin-top', '1em');
     $('#topicname').addClass('form-control');
@@ -193,7 +197,15 @@
         }
       }
     });  
-    
+
+    socket.on('delete_my_chatroom', function(data) {
+      if (room == data['msg']) {
+        socket.emit('left', {});
+        window.location.replace("/chat");
+      }
+      delete_chatroom($('#' + data['msg']));
+    });
+
     $('#messageText').keypress(function(e) {
       var code = e.keyCode || e.which;
       if (code == 13) {
@@ -202,7 +214,6 @@
         $('#messageText').val('');
       }
     });
-
 
     $(".unban").on("click", function () {
         var user = $(this).parent().text().replace("[unban]", "").trim();
@@ -269,6 +280,31 @@
         socket.emit('banned', { data: { user: user, room: room} });
       });
    }
+  
+   function addAddModClick(e) {
+      e.on("click", function() {
+        $(this).parent().children(".remove_admin").removeClass("hidden");
+        var user = $(this).parent().text().replace("[+]", "").replace("[-]", "").trim();
+        console.log(user);
+        add_mod = $(this).detach();
+        socket.emit('added_admin', {data: { user: user}});
+      });
+   }
+
+    remove_chatroom = function(elem) {
+        id = $(elem).attr('id');
+        parent_id = $(elem).parent().attr('id');
+        console.log("ids: " + id + " " + parent_id);
+        socket.emit('delete_chat', { data: { id: id, parent: parent_id} });
+    }
+
+    delete_chatroom = function(id) {
+      if(id) {
+        console.log("exists");
+        id.remove();
+      }
+      console.log("does not exist");
+    }
 
     function clearMessages() {
       $('.media-list li').detach();

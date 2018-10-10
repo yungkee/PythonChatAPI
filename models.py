@@ -64,6 +64,3 @@ class Message(db.Model):
     self.user_email = user_email
     self.topic_id = topic_id
     self.topic_name = topic
-
-class Post(models.Model):
-  title = models.CharField(max_length = 100,)

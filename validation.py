@@ -10,8 +10,8 @@ class RoomForm(Form):
     if not Form.validate(self):
       return False
     
-    topic = Topic.query.filter_by(topicname = self.topicname.data.lower()).first()
-    if topic:
+    room = Topic.query.filter_by(topicname = self.topicname.data.lower()).first()
+    if room:
       self.topicname.errors.append("That room name is already exist")
       return False
     else:
@@ -27,12 +27,13 @@ class RegisterForm(Form):
     if not Form.validate(self):
       return False
     
-    user = User.query.filter_by(email = self.email.data.lower()).first()
-    if user:
-      self.email.errors.append("That email is already exist")
-      return False
-    else:
+    u_email = User.query.filter_by(email = self.email.data.lower()).first()
+    u_username = User.query.filter_by(username =  self.username.data).first()
+    if u_email is None and u_username is None:
       return True
+    else:
+      self.email.errors.append("That email or username is already exist")
+      return False
 
 class LoginForm(Form):
   email = TextField("Email",  [validators.Required("Please enter your email address."), validators.Email("Please enter your email address.")])

@@ -42,11 +42,11 @@ def chat():
 	session['room'] = 'MainChat'
 
 	if 'email' not in session:
-		return redirect(url_for('signin'))
+		return redirect(url_for('login'))
 
 	user = User.query.filter_by(email = session['email']).first()
 
-	if BannedUser.query.filter_by(used_id = user.uid).first() is not None:
+	if BannedUser.query.filter_by(user_id = user.uid).first() is not None:
 		flagged_rooms = BannedUser.query.filter_by(user_id = user.uid).all()
 		for room in flagged_rooms:
 			if room.times_flagged >= 5 and room.topic_id != 1:
@@ -72,7 +72,7 @@ def chat():
 				admin_rooms.append(Topic.query.filter_by(uid=room.topic_id).first().topicname)
 
 	if user is None:
-		return redirect(url_for('signin'))
+		return redirect(url_for('login'))
 	else:
 		session['uid'] = user.uid
 		if request.method == 'POST':
@@ -85,8 +85,8 @@ def chat():
 				db.session.commit()
 				session['topic'] = newroom.topicname
 				newroom = Topic.query.filter_by(topicname=form.topicname.data).first()
-				mod = Admin(user.uid, newroom.uid)
-				db.session.add(mod)
+				adm = Admin(user.uid, newroom.uid)
+				db.session.add(adm)
 				db.session.commit()
 				return redirect('/chat/' + newroom.topicname)
 		
@@ -212,8 +212,8 @@ def login():
 	elif request.method == 'GET':
 		return render_template('login.html', form=form)
 
-@app.route('/signout')
-def signout():
+@app.route('/logout')
+def logout():
 	if 'email' not in session:
 		return redirect(url_for('login'))
 
@@ -246,7 +246,7 @@ def create_room(message):
 	room = Topic.query.filter_by(topicname=session.get('room')).first()
 	for adm in Admin.query.filter_by(user_id=user.id):
 		if adm.topic_id == room.id:
-			db.session.delete(mod)
+			db.session.delete(adm)
 			db.session.commit()
 
 @socketio.on('joinroom', namespace='/chat')
@@ -329,20 +329,20 @@ def leaveroom(message):
     user.topic_name = None
     db.session.commit()
 
-@socketio.on('delete_my_chatroom', namespace='/chat')
-def delete_my_chatroom(message):
-	print("delete_chatroom")
-	print("This is message\n")
+@socketio.on('delete_my_chat', namespace='/chat')
+def delete_my_chat(message):
+	print("delete_my_chat\n")
+	print("This is message ")
 	print(message)
-	topic_id = message['data']['id']
+	room_id = message['data']['id']
 	parent = message['data']['parent']
-	topic = Room.query.filter_by(uid = topic_id).first()
+	topic = Room.query.filter_by(uid = room_id).first()
 	print("hi")
-	for room in BannedUser.query.filter_by(topic_id = topic_id):
+	for room in BannedUser.query.filter_by(topic_id = room_id):
 		print(room.topic_id)
 		db.session.delete(room)
 	print("do")
-	for adm in Admin.query.filter_by(topic_id = topic_id):
+	for adm in Admin.query.filter_by(topic_id = room_id):
 		print(adm.topic_id)
 		db.session.delete(adm)
 	for message in Message.query.filter_by(topic_name = topic.topicname):
@@ -351,7 +351,7 @@ def delete_my_chatroom(message):
 	db.session.delete(topic)
 	db.session.commit()
 	delete_msg = {'msg': parent}
-	emit('delete_my_chatroom', delete_msg, broadcast = True)
+	emit('delete_my_chat', delete_msg, broadcast = True)
 
 if __name__ == '__main__':
 	socketio.run(app)
